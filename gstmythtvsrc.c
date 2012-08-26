@@ -146,7 +146,7 @@ static void gst_mythtv_src_finalize(GObject * gobject)
 {
 	GstMythtvSrc *src = GST_MYTHTV_SRC(gobject);
 
-	if(src->uri) {
+	if(src->uri != NULL) {
 		g_free(src->uri);
 		src->uri = NULL;
 	}
@@ -330,10 +330,14 @@ static gboolean gst_mythtv_src_stop(GstBaseSrc *bsrc)
 		ref_release(src->rec);
 		src->rec = NULL;
 	}
-	ref_release(src->prog);
-	src->prog = NULL;
-	ref_release(src->file);
-	src->file = NULL;
+	if(src->prog != NULL) {
+		ref_release(src->prog);
+		src->prog = NULL;
+	}
+	if (src->file != NULL) {
+		ref_release(src->file);
+		src->file = NULL;
+	}
 	return TRUE;
 }
 

@@ -87,15 +87,15 @@ static void gst_mythtv_src_base_init(gpointer g_class)
 
 }
 
-static void gst_mythtv_src_class_init(GstMythtvSrcClass * klass)
+static void gst_mythtv_src_class_init(GstMythtvSrcClass *klass)
 {
 	GObjectClass *gobject_class;
 	GstPushSrcClass *gstpushsrc_class;
 	GstBaseSrcClass *gstbasesrc_class;
 
-	gobject_class =(GObjectClass *) klass;
-	gstbasesrc_class =(GstBaseSrcClass *) klass;
-	gstpushsrc_class =(GstPushSrcClass *) klass;
+	gobject_class =(GObjectClass *)klass;
+	gstbasesrc_class =(GstBaseSrcClass *)klass;
+	gstpushsrc_class =(GstPushSrcClass *)klass;
 
 	gobject_class->set_property = gst_mythtv_src_set_property;
 	gobject_class->get_property = gst_mythtv_src_get_property;
@@ -132,13 +132,15 @@ static gboolean gst_mythtv_src_is_seekable(GstBaseSrc *push_src)
 }
 
 
-static void gst_mythtv_src_init(GstMythtvSrc * this, GstMythtvSrcClass * g_class)
+static void gst_mythtv_src_init(GstMythtvSrc *this, GstMythtvSrcClass *g_class)
 {
 	this->file = NULL;
 	this->rec = NULL;
 	this->prog = NULL;
+	this->uri = NULL;
 	gst_base_src_set_format(GST_BASE_SRC(this), GST_FORMAT_BYTES);
 }
+
 
 static void gst_mythtv_src_finalize(GObject * gobject)
 {
@@ -153,8 +155,14 @@ static void gst_mythtv_src_finalize(GObject * gobject)
 		ref_release(src->rec);
 		src->rec = NULL;
 	}
-	ref_release(src->prog);
-	ref_release(src->file);
+	if(src->prog != NULL) {
+		ref_release(src->prog);
+		src->prog = NULL;
+	}
+	if (src->file != NULL) {
+		ref_release(src->file);
+		src->file = NULL;
+	}
 
 	G_OBJECT_CLASS(parent_class)->finalize(gobject);
 }
@@ -323,7 +331,9 @@ static gboolean gst_mythtv_src_stop(GstBaseSrc *bsrc)
 		src->rec = NULL;
 	}
 	ref_release(src->prog);
+	src->prog = NULL;
 	ref_release(src->file);
+	src->file = NULL;
 	return TRUE;
 }
 

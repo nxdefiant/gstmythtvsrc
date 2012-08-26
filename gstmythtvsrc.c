@@ -47,9 +47,9 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc * psrc, GstBuffer ** outbu
 
 static gboolean gst_mythtv_src_start(GstBaseSrc * bsrc);
 static gboolean gst_mythtv_src_stop(GstBaseSrc * bsrc);
-static gboolean gst_mythtv_src_do_seek(GstBaseSrc *base, GstSegment *segment);
-static gboolean gst_mythtv_src_get_size(GstBaseSrc *bsrc, guint64 *size);
 static gboolean gst_mythtv_src_is_seekable(GstBaseSrc *push_src);
+static gboolean gst_mythtv_src_get_size(GstBaseSrc *bsrc, guint64 *size);
+static gboolean gst_mythtv_src_do_seek(GstBaseSrc *base, GstSegment *segment);
 
 static GstStateChangeReturn gst_mythtv_src_change_state(GstElement * element, GstStateChange transition);
 
@@ -142,12 +142,19 @@ static void gst_mythtv_src_init(GstMythtvSrc * this, GstMythtvSrcClass * g_class
 
 static void gst_mythtv_src_finalize(GObject * gobject)
 {
-	GstMythtvSrc *this = GST_MYTHTV_SRC(gobject);
+	GstMythtvSrc *src = GST_MYTHTV_SRC(gobject);
 
-	if(this->uri) {
-		g_free(this->uri);
-		this->uri = NULL;
+	if(src->uri) {
+		g_free(src->uri);
+		src->uri = NULL;
 	}
+	if(src->rec != NULL) {
+		cmyth_proginfo_rec_end(src->prog);
+		ref_release(src->rec);
+		src->rec = NULL;
+	}
+	ref_release(src->prog);
+	ref_release(src->file);
 
 	G_OBJECT_CLASS(parent_class)->finalize(gobject);
 }
@@ -441,8 +448,7 @@ static gboolean gst_mythtv_src_uri_set_uri(GstURIHandler * handler, const gchar 
 	gchar *protocol;
 
 	protocol = gst_uri_get_protocol(uri);
-	if((strcmp(protocol, "myth") != 0)
-			&&(strcmp(protocol, "myths") != 0)) {
+	if((strcmp(protocol, "myth") != 0) &&(strcmp(protocol, "myths") != 0)) {
 		g_free(protocol);
 		return FALSE;
 	}

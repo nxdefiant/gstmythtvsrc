@@ -39,48 +39,14 @@ G_BEGIN_DECLS
 typedef struct _GstMythtvSrc GstMythtvSrc;
 typedef struct _GstMythtvSrcClass GstMythtvSrcClass;
 
-typedef enum {
-	GST_MYTHTV_SRC_FILE_TRANSFER,
-	GST_MYTHTV_SRC_NEXT_PROGRAM_CHAIN,
-	GST_MYTHTV_SRC_INVALID_DATA
-} GstMythtvState;
-
 struct _GstMythtvSrc {
 	GstPushSrc      element;
 
-	/*
-	 * MythFileTransfer 
-	 */
 	cmyth_file_t      file;
 	cmyth_recorder_t rec;
 	cmyth_proginfo_t prog;
-	GstMythtvState  state;
-	gchar          *uri_name;
-	gchar          *user_agent;
-	gchar          *live_chain_id;
-	gint            mythtv_version;
-	//gint64          content_size;
-	gint64          prev_content_size;
-	gint64          content_size_last;
-	guint64         bytes_read;
-	gint64          read_offset;
-	gboolean        eos;
-	//gboolean        live_tv;
-	gboolean        enable_timing_position;
-	gint            live_tv_id;
-	gchar          *channel_name;
-	guint           mode;
-
-	/*
-	 * MythTV capabilities 
-	 */
-	GstCaps        *mythtv_caps;
-	gboolean        update_prog_chain;
-
-	/*
-	 * stablish a maximum iteration value to the IS_RECORDING message 
-	 */
-	guint           wait_to_transfer;
+	gchar          *uri;
+	long long pos;
 };
 
 struct _GstMythtvSrcClass {

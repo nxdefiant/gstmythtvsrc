@@ -125,7 +125,12 @@ static void gst_mythtv_src_class_init(GstMythtvSrcClass *klass)
 static gboolean gst_mythtv_src_get_size(GstBaseSrc *bsrc, guint64 *size) {
 	GstMythtvSrc *src = GST_MYTHTV_SRC(bsrc);
 	
-	*size = cmyth_proginfo_length(src->prog);
+	if (src->rec) {
+		// live
+		return FALSE;
+	}
+	src->size = cmyth_proginfo_length(src->prog);
+	*size = src->size;
 
 	return TRUE;
 }
@@ -177,7 +182,7 @@ static gboolean gst_mythtv_src_do_seek(GstBaseSrc *base, GstSegment *segment)
 {
 	GstMythtvSrc *src = GST_MYTHTV_SRC(base);
 
-	GST_DEBUG("Seek %ld %d\n", segment->start, segment->format == GST_FORMAT_BYTES);
+	GST_DEBUG("Seek %ld %d, Size: %ld\n", segment->start, segment->format == GST_FORMAT_BYTES, cmyth_proginfo_length(src->prog));
 
 	src->pos = cmyth_file_seek(src->file, segment->start, SEEK_SET);
 	if (src->pos != segment->start) {
@@ -194,6 +199,8 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 	GstFlowReturn ret = GST_FLOW_OK;
 	guint8 *buf;
 	int num=0, len;
+	GstMessage *msg;
+	guint64 new_size;
 
 	src = GST_MYTHTV_SRC(psrc);
 
@@ -215,6 +222,15 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 	GST_BUFFER_OFFSET(*outbuf) = src->pos;
 	GST_BUFFER_OFFSET_END(*outbuf) = src->pos + num;
 	src->pos += num;
+
+	new_size = cmyth_proginfo_length(src->prog);
+	printf("Test: %ld\n", new_size);
+	if (new_size != src->size) {
+		GST_DEBUG("Updating size\n");
+		msg = gst_message_new_duration(GST_OBJECT(src), GST_FORMAT_BYTES, src->size);
+		gst_element_post_message(GST_ELEMENT(src), msg);
+		src->size = new_size;
+	}
 	
 	return ret;
 }
@@ -243,6 +259,8 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 	char **err=NULL;
 	gboolean ret = TRUE;
 	char *c;
+
+	src->size = 0;
 
 	if(sscanf(src->uri, "myth://%99[^:]:%99[^@]@%99[^/]/%99[^/]%99[^\n]", user, pass, host, cat, filename) != 5) {
 		return FALSE;

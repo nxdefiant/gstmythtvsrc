@@ -47,6 +47,7 @@ struct _GstMythtvSrc {
 	cmyth_proginfo_t prog;
 	gchar          *uri;
 	long long pos;
+	guint64 size;
 };
 
 struct _GstMythtvSrcClass {

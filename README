@@ -1,6 +1,6 @@
 README gstmythtvsrc
 ==========
-gstmythtvsrc - cmyth based MythTV GStreamer source
+gstmythtvsrc - cmyth based MythTV GStreamer source, loosely based on the version in gst-plugins-bad.
 
 It was written to use GStreamer enabled XBMC as MythTV Frontend, used on the ARM-platform Pandaboard.
 

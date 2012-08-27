@@ -42,6 +42,7 @@ typedef struct _GstMythtvSrcClass GstMythtvSrcClass;
 struct _GstMythtvSrc {
 	GstPushSrc      element;
 
+	cmyth_conn_t control;
 	cmyth_file_t      file;
 	cmyth_recorder_t rec;
 	cmyth_proginfo_t prog;

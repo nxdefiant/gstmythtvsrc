@@ -125,12 +125,12 @@ static void gst_mythtv_src_class_init(GstMythtvSrcClass *klass)
 static gboolean gst_mythtv_src_get_size(GstBaseSrc *bsrc, guint64 *size) {
 	GstMythtvSrc *src = GST_MYTHTV_SRC(bsrc);
 	
-	if (src->rec) {
-		// live
-		return FALSE;
-	}
 	src->size = cmyth_proginfo_length(src->prog);
 	*size = src->size;
+	if (src->rec != NULL && src->size == 0) {
+		// live
+		*size = GST_CLOCK_TIME_NONE;
+	}
 
 	return TRUE;
 }
@@ -144,6 +144,7 @@ static gboolean gst_mythtv_src_is_seekable(GstBaseSrc *push_src)
 
 static void gst_mythtv_src_init(GstMythtvSrc *this, GstMythtvSrcClass *g_class)
 {
+	this->control = NULL;
 	this->file = NULL;
 	this->rec = NULL;
 	this->prog = NULL;
@@ -172,6 +173,10 @@ static void gst_mythtv_src_finalize(GObject * gobject)
 	if (src->file != NULL) {
 		ref_release(src->file);
 		src->file = NULL;
+	}
+	if (src->control != NULL) {
+		ref_release(src->control);
+		src->control = NULL;
 	}
 
 	G_OBJECT_CLASS(parent_class)->finalize(gobject);
@@ -216,6 +221,19 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 
 	GST_DEBUG("read: %d at %lld\n", num, src->pos);
 
+	if(num == 0 && src->rec != NULL) {
+		// try new stream
+		GST_DEBUG("Trying next stream\n");
+		src->prog = cmyth_recorder_get_cur_proginfo(src->rec);
+		cmyth_proginfo_rec_start(src->prog);
+		if((src->file=cmyth_conn_connect_file(src->prog, src->control, 16*1024, 32*1024)) == NULL) {
+			GST_INFO_OBJECT(src, "FileTransfer is NULL");
+			g_free(buf);
+			return GST_FLOW_ERROR;
+		}
+		src->pos = 0;
+	}
+
 	*outbuf = gst_buffer_new();
 	GST_BUFFER_SIZE(*outbuf) = num;
 	GST_BUFFER_MALLOCDATA(*outbuf) = buf;
@@ -226,11 +244,10 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 
 	if (src->pos > src->size) {
 		GST_DEBUG("Updating size\n");
-
-		msg = gst_message_new_duration(GST_OBJECT(src), GST_FORMAT_BYTES, GST_CLOCK_TIME_NONE);
-		gst_element_post_message(GST_ELEMENT(src), msg);
-
+		
 		gst_segment_set_duration(&basesrc->segment, GST_FORMAT_BYTES, src->pos);
+		msg = gst_message_new_duration(GST_OBJECT(src), GST_FORMAT_BYTES, src->pos);
+		gst_element_post_message(GST_ELEMENT(src), msg);
 
 		src->size = src->pos;
 	}
@@ -250,7 +267,6 @@ void prog_update_callback(cmyth_proginfo_t prog) {
 static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 {
 	GstMythtvSrc *src = GST_MYTHTV_SRC(bsrc);
-	cmyth_conn_t control;
 	cmyth_proglist_t episodes;
 	int i, count;
 	char user[100];
@@ -270,14 +286,14 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 	}
 	GST_DEBUG("Using URI: myth://%s:%s@%s/%s%s\n", user, pass, host, cat, filename);
 
-	if((control=cmyth_conn_connect_ctrl(host, 6543, 16*1024, 4096)) == NULL) {
+	if((src->control=cmyth_conn_connect_ctrl(host, 6543, 16*1024, 4096)) == NULL) {
 		return FALSE;
 	}
 
 	if(strcmp(cat, "recordings") == 0) {
-		episodes = cmyth_proglist_get_all_recorded(control);
+		episodes = cmyth_proglist_get_all_recorded(src->control);
 		if(episodes == NULL) {
-			ref_release(control);
+			ref_release(src->control);
 			return FALSE;
 		}
 		count = cmyth_proglist_get_count(episodes);
@@ -299,7 +315,7 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 		*c = '\0';
 		// search recorder
 		for(i=0; i<16; i++) {
-			src->rec = cmyth_conn_get_recorder_from_num(control, i);
+			src->rec = cmyth_conn_get_recorder_from_num(src->control, i);
 			if(src->rec) {
 				GST_DEBUG("Channel: %d Is Recording: %d\n", i, cmyth_recorder_is_recording(src->rec));
 				GST_DEBUG("Channel OK: %s %d\n", filename+1, cmyth_recorder_check_channel(src->rec, filename+1) == 0);
@@ -312,7 +328,6 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 		}
 		if(src->rec == NULL) {
 			GST_DEBUG("No recorder\n");
-			ref_release(control);
 			return FALSE;
 		}
 
@@ -328,16 +343,12 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 		GST_DEBUG("Rec: %s\n", pathname);
 	}
 	
-	if((src->file=cmyth_conn_connect_file(src->prog, control, 16*1024, 32*1024)) == NULL) {
-		ret = FALSE;
-	}
-
-	if(src->file == NULL) {
+	if((src->file=cmyth_conn_connect_file(src->prog, src->control, 16*1024, 32*1024)) == NULL) {
 		GST_INFO_OBJECT(src, "FileTransfer is NULL");
 		ret = FALSE;
 	}
+
 	ref_release(pathname);
-	ref_release(control);
 
 	return ret;
 }

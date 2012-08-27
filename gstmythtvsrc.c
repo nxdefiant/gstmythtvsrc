@@ -199,10 +199,11 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 	GstFlowReturn ret = GST_FLOW_OK;
 	guint8 *buf;
 	int num=0, len;
+	GstBaseSrc *basesrc;
 	GstMessage *msg;
-	guint64 new_size;
 
 	src = GST_MYTHTV_SRC(psrc);
+	basesrc = GST_BASE_SRC_CAST(src);
 
 	buf = g_malloc(16*1024);
 	len = cmyth_file_request_block(src->file, 16*1024);
@@ -223,13 +224,15 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 	GST_BUFFER_OFFSET_END(*outbuf) = src->pos + num;
 	src->pos += num;
 
-	new_size = cmyth_proginfo_length(src->prog);
-	printf("Test: %ld\n", new_size);
-	if (new_size != src->size) {
+	if (src->pos > src->size) {
 		GST_DEBUG("Updating size\n");
-		msg = gst_message_new_duration(GST_OBJECT(src), GST_FORMAT_BYTES, src->size);
+
+		msg = gst_message_new_duration(GST_OBJECT(src), GST_FORMAT_BYTES, GST_CLOCK_TIME_NONE);
 		gst_element_post_message(GST_ELEMENT(src), msg);
-		src->size = new_size;
+
+		gst_segment_set_duration(&basesrc->segment, GST_FORMAT_BYTES, src->pos);
+
+		src->size = src->pos;
 	}
 	
 	return ret;

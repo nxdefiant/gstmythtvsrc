@@ -30,6 +30,9 @@
 #define GMYTHTV_VERSION_DEFAULT             30
 #define GST_FLOW_ERROR_NO_DATA             (-101)
 
+GST_DEBUG_CATEGORY_STATIC (gst_mythtv_src_debug);
+#define GST_CAT_DEFAULT gst_mythtv_src_debug
+
 enum
 {
 	PROP_0,
@@ -114,6 +117,8 @@ static void gst_mythtv_src_class_init(GstMythtvSrcClass *klass)
 	gstbasesrc_class->get_size = GST_DEBUG_FUNCPTR(gst_mythtv_src_get_size);
 	gstbasesrc_class->is_seekable = GST_DEBUG_FUNCPTR (gst_mythtv_src_is_seekable);
 	gstbasesrc_class->do_seek = GST_DEBUG_FUNCPTR(gst_mythtv_src_do_seek);
+	
+	GST_DEBUG_CATEGORY_INIT(gst_mythtv_src_debug, "mythtvsrc", 0, "mythtv element");
 }
 
 
@@ -172,7 +177,7 @@ static gboolean gst_mythtv_src_do_seek(GstBaseSrc *base, GstSegment *segment)
 {
 	GstMythtvSrc *src = GST_MYTHTV_SRC(base);
 
-	printf("Seek %ld %d\n", segment->start, segment->format == GST_FORMAT_BYTES);
+	GST_DEBUG("Seek %ld %d\n", segment->start, segment->format == GST_FORMAT_BYTES);
 
 	src->pos = cmyth_file_seek(src->file, segment->start, SEEK_SET);
 	if (src->pos != segment->start) {
@@ -201,7 +206,7 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 		return GST_FLOW_ERROR;
 	}
 
-	printf("read: %d at %lld\n", num, src->pos);
+	GST_DEBUG("read: %d at %lld\n", num, src->pos);
 
 	*outbuf = gst_buffer_new();
 	GST_BUFFER_SIZE(*outbuf) = num;
@@ -216,7 +221,7 @@ static GstFlowReturn gst_mythtv_src_create(GstPushSrc *psrc, GstBuffer **outbuf)
 
 
 void prog_update_callback(cmyth_proginfo_t prog) {
-	printf("prog_update_callback called\n");
+	GST_DEBUG("prog_update_callback called\n");
 	return;
 }
 
@@ -242,7 +247,7 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 	if(sscanf(src->uri, "myth://%99[^:]:%99[^@]@%99[^/]/%99[^/]%99[^\n]", user, pass, host, cat, filename) != 5) {
 		return FALSE;
 	}
-	printf("Using URI: myth://%s:%s@%s/%s%s\n", user, pass, host, cat, filename);
+	GST_DEBUG("Using URI: myth://%s:%s@%s/%s%s\n", user, pass, host, cat, filename);
 
 	if((control=cmyth_conn_connect_ctrl(host, 6543, 16*1024, 4096)) == NULL) {
 		return FALSE;
@@ -260,7 +265,7 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 			src->prog = cmyth_proglist_get_item(episodes, i);
 
 			pathname = cmyth_proginfo_pathname(src->prog);
-			printf("Search file: %s %s %d\n", filename, pathname, strcmp(filename, pathname));
+			GST_DEBUG("Search file: %s %s %d\n", filename, pathname, strcmp(filename, pathname));
 			if(strcmp(filename, pathname) == 0) {
 				break;
 			}
@@ -275,8 +280,8 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 		for(i=0; i<16; i++) {
 			src->rec = cmyth_conn_get_recorder_from_num(control, i);
 			if(src->rec) {
-				printf("Channel: %d Is Recording: %d\n", i, cmyth_recorder_is_recording(src->rec));
-				printf("Channel OK: %s %d\n", filename+1, cmyth_recorder_check_channel(src->rec, filename+1) == 0);
+				GST_DEBUG("Channel: %d Is Recording: %d\n", i, cmyth_recorder_is_recording(src->rec));
+				GST_DEBUG("Channel OK: %s %d\n", filename+1, cmyth_recorder_check_channel(src->rec, filename+1) == 0);
 				if(cmyth_recorder_is_recording(src->rec) == 0 && cmyth_recorder_check_channel(src->rec, filename+1) == 0) {
 					break;
 				}
@@ -285,7 +290,7 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 			}
 		}
 		if(src->rec == NULL) {
-			printf("No recorder\n");
+			GST_DEBUG("No recorder\n");
 			ref_release(control);
 			return FALSE;
 		}
@@ -295,11 +300,11 @@ static gboolean gst_mythtv_src_start(GstBaseSrc *bsrc)
 		cmyth_recorder_pause(src->rec);
 		cmyth_recorder_set_channel(src->rec, filename+1);
 
-		printf("Start recording..\n");
+		GST_DEBUG("Start recording..\n");
 		src->prog = cmyth_recorder_get_cur_proginfo(src->rec);
 		cmyth_proginfo_rec_start(src->prog);
 		pathname = cmyth_proginfo_pathname(src->prog);
-		printf("Rec: %s\n", pathname);
+		GST_DEBUG("Rec: %s\n", pathname);
 	}
 	
 	if((src->file=cmyth_conn_connect_file(src->prog, control, 16*1024, 32*1024)) == NULL) {

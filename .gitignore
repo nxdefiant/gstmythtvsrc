@@ -1,2 +1,7 @@
 *.so
 *.swp
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+CMakeFiles
+install_manifest.txt

@@ -1,0 +1,42 @@
+README gstmythtvsrc
+==========
+gstmythtvsrc - cmyth based MythTV GStreamer source
+
+It was written to use GStreamer enabled XBMC as MythTV Frontend, used on the ARM-platform Pandaboard.
+
+Status: Works for me - this is the initial version after a (long) nightly write.
+ 
+
+Requirements:
+<---------->
+GStreamer 0.10
+cmyth - http://cmyth.github.com
+
+
+Author:
+<---------->
+Erik Andresen - erik@vontaene.de
+
+Please contact me for bugs or any suggestions
+
+
+Compiling and installing:
+<---------->
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr
+make
+make install
+
+When using another installation prefix make sure gstreamer finds it, e.g with
+export GST_PLUGIN_PATH=/usr/local/lib/gstreamer-0.10
+
+
+How to use:
+<---------->
+Set the uri to the file or channel you want to play, e.g.
+gst-launch playbin2 uri=myth://username:password@192.168.0.1/channels/7.ts
+gst-launch playbin2 uri=myth://username:password@192.168.0.1/recordings/17413_20120823161000.mpg 
+
+
+License:
+<---------->
+GPL

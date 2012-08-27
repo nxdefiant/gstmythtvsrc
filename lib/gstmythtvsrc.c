@@ -1,7 +1,6 @@
 /*
- * GStreamer MythTV Plug-in 
- * Copyright(C) <2006> Rosfran Borges <rosfran.borges@indt.org.br>
- * Copyright(C) <2007> Renato Filho <renato.filho@indt.org.br>  
+ * GStreamer MythTV Plug-in based on cmyth
+ * Copyright(C) <2012> Erik Andresen <erik@vontaene.de>
  * This library is free software; you can
  * redistribute it and/or modify it under the terms of the GNU Library
  * General Public License as published by the Free Software Foundation;
@@ -14,10 +13,6 @@
  * not, write to the Free Software Foundation, Inc., 59 Temple Place - Suite 
  * 330, Boston, MA 02111-1307, USA. 
  */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include "gstmythtvsrc.h"
 #include "refmem/refmem.h"
